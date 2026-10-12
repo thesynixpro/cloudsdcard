@@ -9,18 +9,18 @@ Cloud SD Card is a native Android Studio starter project for a Google Drive-back
 - Android Studio with a JDK 17 runtime.
 - Android SDK Platform 35 installed.
 - A Google Cloud project with the Google Drive API enabled.
-- An Android OAuth client configured for package `com.cloudsdcard.app` and your debug/release signing SHA-1/SHA-256 fingerprints.
+- An Android OAuth client configured for package `com.aprax.csd` and the signing certificate SHA-1/SHA-256 of the installed APK.
 - Google Identity Services OAuth consent screen configured for the intended testers/users.
 
 ## Open and build
 
 1. Extract this ZIP and open the `CloudSDCard` folder in Android Studio.
 2. Allow Gradle sync and install any prompted SDK components.
-3. Configure your OAuth Android client in the same Google Cloud project where the Drive API is enabled. Use the exact application ID and signing certificate fingerprints. Do not place a client secret in the APK.
+3. Configure your OAuth Android client in the same Google Cloud project where the Drive API is enabled. Use application ID `com.aprax.csd` and the SHA-1/SHA-256 fingerprint for the APK you install. The GitHub-hosted debug keystore is temporary, so its fingerprint may change between runs; for stable OAuth, configure a stable signing keystore through GitHub Actions secrets and sign builds with it. Do not place a client secret in the APK.
 4. Install on a device with Google Play services and an internet connection.
 5. Tap **Connect Google Drive** and authorize the requested `drive.file` scope.
 
-The project uses Gradle Kotlin DSL and `gradle/libs.versions.toml`. Dependency versions are pinned in the version catalog. Gradle wrapper scripts are not bundled in this ZIP; Android Studio can use its configured Gradle installation or generate a wrapper with `gradle wrapper` from the project root.
+The project uses Gradle Kotlin DSL and `gradle/libs.versions.toml`. Dependency versions are pinned in the version catalog. The launcher icon is a custom Cloud SD Card vector/adaptive icon. A reusable SVG logo is also included at `assets/cloud-sd-card-logo.svg`. Gradle wrapper scripts are not bundled in this ZIP; Android Studio can use its configured Gradle installation or generate a wrapper with `gradle wrapper` from the project root.
 
 ## Google Drive scope behavior
 
@@ -78,6 +78,14 @@ CloudSDCard/
 ├── settings.gradle.kts
 └── README.md
 ```
+
+### GitHub Actions APK releases
+
+The workflow `.github/workflows/build-apk.yml` builds `app-debug.apk`, uploads it as a workflow artifact, and publishes the same APK as a GitHub Release asset. Each release tag follows `debug-apk-build-RUN_NUMBER-RUN_ATTEMPT`. The workflow needs repository Actions permissions that allow `GITHUB_TOKEN` to create releases; repository settings may need **Settings → Actions → General → Workflow permissions → Read and write permissions**. Debug releases are for testing only.
+
+### Google authorization troubleshooting
+
+If the app says authorization was cancelled or fails to return a token, first confirm that the Google Drive API is enabled and that the Google Cloud Android OAuth client uses package `com.aprax.csd` and the signing certificate SHA-1 of the APK actually installed. Also check that the OAuth consent screen is configured and your account is listed as a test user if the app is in Testing mode. A wrong package/SHA-1 often appears as an authorization failure rather than a clear explanation. The app now displays more diagnostic guidance instead of always labelling a failed resolution as cancellation. A real user cancellation still must be retried by the user.
 
 ### Build workflow dependency fix
 

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Cloud SD Card</title>
+  <desc id="desc">A cyan cloud with a dark storage card and violet indicator lights on a navy background.</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#151D31"/><stop offset="1" stop-color="#0B1020"/></linearGradient><linearGradient id="cloud" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7DEBFA"/><stop offset="1" stop-color="#35BFD8"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M120 272c-36 0-65-29-65-65s29-65 65-65c11 0 21 3 30 7 14-46 57-79 107-79 63 0 114 51 114 114 0 6-1 12-2 18 35 7 61 38 61 75 0 42-34 76-76 76H120c-29 0-52-23-52-52s23-52 52-52z" fill="url(#cloud)"/>
+  <rect x="153" y="205" width="207" height="218" rx="27" fill="#0B1020" stroke="#B5F4FC" stroke-width="9"/>
+  <path d="M191 251h131v24H191zM191 298h131v15H191zM191 331h86v15h-86z" fill="#55D6E8"/>
+  <circle cx="205" cy="379" r="10" fill="#9D8CFF"/><circle cx="238" cy="379" r="10" fill="#9D8CFF"/>
+</svg>

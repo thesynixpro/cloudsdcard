@@ -8,11 +8,11 @@ on:
       - master
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
-    name: Build Debug APK
+    name: Build APK and publish GitHub Release
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -26,7 +26,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle 8.11.1
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
@@ -38,17 +38,26 @@ jobs:
           test -f build.gradle.kts
           test -f gradle/libs.versions.toml
           test -f app/build.gradle.kts
-          echo "Android project structure found."
+          grep -q 'applicationId = "com.aprax.csd"' app/build.gradle.kts
+          echo "Project files and application ID validated."
 
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify APK
+      - name: Verify APK and signing fingerprint
+        id: apk
         shell: bash
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
-          echo "APK generated successfully: $APK"
+          echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
+          echo "APK generated: $APK"
+          if command -v apksigner >/dev/null 2>&1; then
+            apksigner verify --print-certs "$APK" || true
+          else
+            SDK_APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+            if [ -n "$SDK_APKSIGNER" ]; then "$SDK_APKSIGNER" verify --print-certs "$APK" || true; fi
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -57,3 +66,24 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}
+          name: Cloud SD Card Debug APK — Build ${{ github.run_number }}.${{ github.run_attempt }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            Automatically generated debug APK for Cloud SD Card.
+
+            - Built by GitHub Actions.
+            - Run number: ${{ github.run_number }}
+            - Run attempt: ${{ github.run_attempt }}
+            - Source commit SHA: ${{ github.sha }}
+            - Package name: `com.aprax.csd`
+            - Intended for testing only; this is not a Play Store production release.
+            - Signed with the temporary GitHub Actions debug keystore. The signing certificate may differ between hosted runners/builds.
+          files: app/build/outputs/apk/debug/app-debug.apk
+          draft: false
+          prerelease: false
+          make_latest: true

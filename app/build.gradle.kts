@@ -7,10 +7,10 @@ plugins {
 }
 
 android {
-    namespace = "com.cloudsdcard.app"
+    namespace = "com.aprax.csd"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.cloudsdcard.app"
+        applicationId = "com.aprax.csd"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
