@@ -78,3 +78,7 @@ CloudSDCard/
 ├── settings.gradle.kts
 └── README.md
 ```
+
+### Build workflow dependency fix
+
+The Google Play services authentication dependency is configured as `com.google.android.gms:play-services-auth:21.4.0`. Earlier project versions incorrectly used `1.1.1`, which does not exist for this artifact and causes Gradle's `checkDebugAarMetadata` task to fail. Push this updated project to GitHub and rerun the **Build Cloud SD Card APK** workflow.

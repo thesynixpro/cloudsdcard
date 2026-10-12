@@ -11,7 +11,7 @@ ksp = "2.1.21-2.0.1"
 work = "2.10.1"
 hilt = "2.56.2"
 hiltWork = "1.2.0"
-identity = "1.1.1"
+identity = "21.4.0"
 core = "1.16.0"
 
 [libraries]
