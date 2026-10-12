@@ -35,6 +35,7 @@ The app creates a folder named `Cloud SD Card` if it cannot find an accessible m
 - Real Drive listing with pagination, search by accessible filename, folder creation, rename, delete, and quota retrieval where provided by Drive.
 - Streaming selected-file upload and download using bounded 64 KiB buffers rather than loading full files into memory.
 - Android Storage Access Framework for selecting upload files and download destinations.
+- **CSD system document location** through an Android `DocumentsProvider`: CSD is offered in Android's system file/document picker and compatible third-party file managers, in addition to the app's own Cloud Drive screen.
 - Room metadata tables for cloud file index and transfer records.
 - User-facing authorization and transfer errors; destructive delete confirmation.
 
@@ -47,7 +48,10 @@ The app creates a folder named `Cloud SD Card` if it cannot find an accessible m
 - Game Storage is an honest starter workflow, not a complete game backup product. Versioned manifests, multi-file backups, checksums, backup comparison, and restore-to-selected-folder are not implemented. The import action uploads a selected file to the current Drive folder.
 - Rename currently appends “(renamed)” rather than showing a rename dialog. Move/copy and batch selection are not implemented.
 - The account label reports connection status; retrieving/displaying the actual account email is not implemented.
-- DocumentsProvider, complete local/cloud reconciliation, account-switch UI, persistent secure token lifecycle, light theme controls, and complete automated test coverage remain future work.
+- The DocumentsProvider exposes the app's `Cloud SD Card` Drive folder as a location named `CSD`. Android's system document picker should show it; third-party file-manager support varies by app and Android version. It is not a real mounted `/storage/...` volume and will not appear as a physical SD card in every system screen.
+- The provider keeps the short-lived access token in app-private SharedPreferences so other Android document-picker clients can access CSD while the app is not open. Google access tokens expire; if CSD returns an authorization error, open Cloud SD Card and reconnect Google Drive. Production builds should replace this with a robust encrypted token lifecycle.
+- Provider file operations support listing, creating folders/files, reading/downloading, writing/uploading, renaming, and deleting. Cloud API operations require an active valid token and internet connection.
+- Complete local/cloud reconciliation, account-switch UI, persistent secure token lifecycle, light theme controls, and complete automated test coverage remain future work.
 - Drive API requests use a direct HTTPS REST implementation and surface API errors. Production hardening should add structured retry/backoff, request cancellation, stronger transfer state persistence, and additional integration tests.
 
 ## Android / game-storage limitation
