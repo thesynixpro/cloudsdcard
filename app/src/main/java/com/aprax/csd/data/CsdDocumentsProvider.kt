@@ -62,7 +62,10 @@ class CsdDocumentsProvider : DocumentsProvider() {
 
     private fun request(url: String, method: String = "GET", body: ByteArray? = null, contentType: String? = null): Pair<HttpURLConnection, String> {
         val c = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = method
+            // Android's HttpURLConnection implementations do not consistently support PATCH.
+            // Google APIs support X-HTTP-Method-Override, so send POST for PATCH operations.
+            requestMethod = if (method.equals("PATCH", ignoreCase = true)) "POST" else method
+            if (method.equals("PATCH", ignoreCase = true)) setRequestProperty("X-HTTP-Method-Override", "PATCH")
             connectTimeout = 20000
             readTimeout = 60000
             setRequestProperty("Authorization", "Bearer ${token()}")
@@ -150,24 +153,42 @@ class CsdDocumentsProvider : DocumentsProvider() {
     override fun openDocument(documentId: String, mode: String, signal: CancellationSignal?): ParcelFileDescriptor {
         if (documentId == ROOT_DOC) throw FileNotFoundException("CSD is a folder, not a file.")
         val write = mode.contains("w")
-        val pipe = ParcelFileDescriptor.createPipe()
+        val pipe = ParcelFileDescriptor.createReliablePipe()
         if (write) {
             thread(name = "csd-cloud-upload") {
-                ParcelFileDescriptor.AutoCloseInputStream(pipe[0]).use { input ->
-                    try { uploadStream(documentId, input) } catch (_: Exception) { /* The receiving app gets a closed pipe; app UI can report API errors on refresh. */ }
+                try {
+                    ParcelFileDescriptor.AutoCloseInputStream(pipe[0]).use { input -> uploadStream(documentId, input) }
+                } catch (_: Exception) {
+                    // The content-provider caller owns the write end; the next metadata refresh
+                    // will reveal whether Drive accepted the upload. Never close its descriptor here.
+                    try { pipe[0].closeWithError("CSD upload failed. Reconnect Google Drive and retry.") } catch (_: Exception) { }
                 }
             }
             return pipe[1]
         }
         thread(name = "csd-cloud-download") {
+            var c: HttpURLConnection? = null
             try {
-                val c = (URL("$BASE/files/${enc(documentId)}?alt=media").openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 20000; readTimeout = 60000; setRequestProperty("Authorization", "Bearer ${token()}")
+                c = (URL("$BASE/files/${enc(documentId)}?alt=media").openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 20000
+                    readTimeout = 120000
+                    setRequestProperty("Authorization", "Bearer ${token()}")
+                    setRequestProperty("Accept-Encoding", "identity")
                 }
-                if (c.responseCode !in 200..299) throw FileNotFoundException("Unable to download cloud document (${c.responseCode}). Reconnect CSD if needed.")
-                ParcelFileDescriptor.AutoCloseOutputStream(pipe[1]).use { out -> BufferedInputStream(c.inputStream).use { input -> BufferedOutputStream(out).use { output -> input.copyTo(output, 64 * 1024) } } }
-                c.disconnect()
-            } catch (_: Exception) { try { pipe[1].close() } catch (_: Exception) { } }
+                if (c.responseCode !in 200..299) {
+                    val message = c.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    throw FileNotFoundException("Google Drive download failed (${c.responseCode}): $message")
+                }
+                ParcelFileDescriptor.AutoCloseOutputStream(pipe[1]).use { out ->
+                    BufferedInputStream(c.inputStream).use { input ->
+                        val output = BufferedOutputStream(out)
+                        input.copyTo(output, 64 * 1024)
+                        output.flush()
+                    }
+                }
+            } catch (e: Exception) {
+                try { pipe[1].closeWithError("CSD download failed: ${e.message ?: "Google Drive error"}") } catch (_: Exception) { }
+            } finally { c?.disconnect() }
         }
         return pipe[0]
     }
@@ -197,9 +218,11 @@ class CsdDocumentsProvider : DocumentsProvider() {
         val meta = JSONObject(metaJson).apply { remove("id") }
         val boundary = "csd-${UUID.randomUUID()}"
         val c = (URL("$UPLOAD/$id?uploadType=multipart&fields=id").openConnection() as HttpURLConnection).apply {
-            requestMethod = "PATCH"; doOutput = true; connectTimeout = 20000; readTimeout = 60000
+            requestMethod = "POST"; doOutput = true; connectTimeout = 20000; readTimeout = 120000
+            setRequestProperty("X-HTTP-Method-Override", "PATCH")
             setRequestProperty("Authorization", "Bearer ${token()}")
             setRequestProperty("Content-Type", "multipart/related; boundary=$boundary")
+            setChunkedStreamingMode(64 * 1024)
         }
         c.outputStream.use { out ->
             out.write("--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--$boundary\r\nContent-Type: ${meta.optString("mimeType", "application/octet-stream")}\r\n\r\n".toByteArray())

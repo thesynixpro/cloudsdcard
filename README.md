@@ -94,3 +94,12 @@ If the app says authorization was cancelled or fails to return a token, first co
 ### Build workflow dependency fix
 
 The Google Play services authentication dependency is configured as `com.google.android.gms:play-services-auth:21.4.0`. Earlier project versions incorrectly used `1.1.1`, which does not exist for this artifact and causes Gradle's `checkDebugAarMetadata` task to fail. Push this updated project to GitHub and rerun the **Build Cloud SD Card APK** workflow.
+
+
+## Fixes: CSD file transfer and stable SHA-1
+
+- The DocumentsProvider uses a reliable pipe for downloads, reports cloud download failures through the pipe, and uses chunked streaming for cloud file updates. It also sends Drive PATCH requests using POST plus `X-HTTP-Method-Override` for Android compatibility.
+- GitHub Actions installs `signing/csd-debug.keystore` as the debug signing key before building. This keeps the debug APK signing certificate fingerprint stable between builds.
+- Persistent debug keystore SHA-1: `66:2F:36:60:62:DE:0A:40:E3:B0:5D:DA:5F:26:42:F8:43:0A:B7:C6`
+- Persistent debug keystore SHA-256: `66:D6:1B:BA:CD:37:57:3E:58:BE:9A:F8:6A:86:F3:81:A9:47:6D:4E:10:88:8C:EF:B7:80:97:A9:C6:BE:8D:EA`
+- This keystore is for debug/testing builds only. Do not use it for a production app or Play Store release. Because it is bundled in the source ZIP, anyone who gets the project also gets this debug key.

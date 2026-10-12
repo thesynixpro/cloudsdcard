@@ -42,6 +42,15 @@ jobs:
           grep -q 'applicationId = "com.aprax.csd"' app/build.gradle.kts
           echo "Project files and application ID validated: com.aprax.csd"
 
+      - name: Install persistent debug signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s signing/csd-debug.keystore
+          mkdir -p "$HOME/.android"
+          install -m 600 signing/csd-debug.keystore "$HOME/.android/debug.keystore"
+          keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | grep -E 'SHA1:|SHA256:'
+
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
 
@@ -112,8 +121,9 @@ jobs:
             - Source commit SHA: ${{ github.sha }}
             - Package name: `com.aprax.csd`
             - Intended for testing only; this is not a Play Store production release.
-            - Signed with the temporary GitHub Actions debug keystore. The signing certificate may differ between hosted runners/builds.
+            - Signed with the project's persistent debug-only keystore so the SHA-1 remains stable across GitHub Actions builds.
             - The exact APK signing certificate SHA-1 and SHA-256 are printed in the workflow logs and build summary.
+            - Debug key only; do not use this key for a production/Play Store release.
           files: app/build/outputs/apk/debug/app-debug.apk
           draft: false
           prerelease: false
